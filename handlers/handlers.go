@@ -76,8 +76,6 @@ func (bot *Bot) HandleLoggedIn(update *echotron.Update) types.StateFn {
 
 		defer resp.Close()
 
-		fmt.Println(resp.String())
-
 		deviceData := new(types.DeviceData)
 
 		if err := resp.JSON(deviceData); err != nil {
