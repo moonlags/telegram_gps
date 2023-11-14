@@ -6,7 +6,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var githubConf = new(oauth2.Config)
+var githubConf *oauth2.Config
 
 func GithubConf() *oauth2.Config {
 	return githubConf
