@@ -97,6 +97,24 @@ func (bot *Bot) HandleLoggedIn(update *echotron.Update) types.StateFn {
 				log.WithError(err).Error("failed to send a location")
 			}
 		}
+	} else if strings.HasPrefix(update.Message.Text, "/sleep") {
+		resp, err := grequests.Post("http://localhost:50731/api/device/sleep", &grequests.RequestOptions{
+			JSON: map[string]interface{}{"ID": *bot.User.ID, "IMEI": bot.DeviceIMEI},
+		})
+		if err != nil || resp.StatusCode != 200 {
+			log.WithError(err).Error("failed to send a request")
+			if _, err := bot.SendMessage("Something went wrong. Try again later", bot.ChatID, nil); err != nil {
+				log.WithError(err).Error("failed to send a message")
+			}
+			return bot.HandleLoggedIn
+		}
+
+		defer resp.Close()
+
+		if _, err := bot.SendMessage("Your device now is in sleep mode!", bot.ChatID, nil); err != nil {
+			log.WithError(err).Error("failed to send a message")
+		}
+
 	}
 
 	return bot.HandleLoggedIn
@@ -106,7 +124,7 @@ func (bot *Bot) HandleImeiInput(update *echotron.Update) types.StateFn {
 	resp, err := grequests.Post("http://localhost:50731/api/user/link", &grequests.RequestOptions{
 		JSON: map[string]interface{}{"ID": *bot.User.ID, "IMEI": update.Message.Text},
 	})
-	if err != nil {
+	if err != nil || resp.StatusCode != 200 {
 		log.WithError(err).Error("failed to send a request")
 		if _, err := bot.SendMessage("Something went wrong. Please check your provided imei and try again!", bot.ChatID, nil); err != nil {
 			log.WithError(err).Error("failed to send a message")
@@ -115,14 +133,6 @@ func (bot *Bot) HandleImeiInput(update *echotron.Update) types.StateFn {
 	}
 
 	defer resp.Close()
-
-	if resp.StatusCode != 200 {
-		if _, err := bot.SendMessage("Something went wrong. Please check your provided imei and try again!", bot.ChatID, nil); err != nil {
-			log.WithError(err).Error("failed to send a message")
-		}
-		return bot.HandleImeiInput
-
-	}
 
 	bot.DeviceIMEI = update.Message.Text
 
