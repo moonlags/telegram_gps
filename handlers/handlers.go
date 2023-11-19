@@ -60,7 +60,7 @@ func (bot *Bot) HandleMessage(update *echotron.Update) types.StateFn {
 
 func (bot *Bot) HandleLoggedIn(update *echotron.Update) types.StateFn {
 	if strings.HasPrefix(update.Message.Text, "/help") {
-		if _, err := bot.SendMessage("Command list:\n /help - dislpays this list\n /position - get last device postition\n /sleep - set device in sleep mode", bot.ChatID, nil); err != nil {
+		if _, err := bot.SendMessage("Command list:\n /help - dislpays this list\n /position - get last device postition\n /sleep - set device in sleep mode\n /restart - restarts your device\n /shutdown - shutdowns your device", bot.ChatID, nil); err != nil {
 
 			log.WithError(err).Error("failed to send a message")
 		}
@@ -114,7 +114,40 @@ func (bot *Bot) HandleLoggedIn(update *echotron.Update) types.StateFn {
 		if _, err := bot.SendMessage("Your device now is in sleep mode!", bot.ChatID, nil); err != nil {
 			log.WithError(err).Error("failed to send a message")
 		}
+	} else if strings.HasPrefix(update.Message.Text, "/restart") {
+		resp, err := grequests.Post("http://localhost:50731/api/device/restart", &grequests.RequestOptions{
+			JSON: map[string]interface{}{"ID": *bot.User.ID, "IMEI": bot.DeviceIMEI},
+		})
+		if err != nil || resp.StatusCode != 200 {
+			log.WithError(err).Error("failed to send a request")
+			if _, err := bot.SendMessage("Something went wrong. Try again later", bot.ChatID, nil); err != nil {
+				log.WithError(err).Error("failed to send a message")
+			}
+			return bot.HandleLoggedIn
+		}
 
+		defer resp.Close()
+
+		if _, err := bot.SendMessage("Your device is restarting...", bot.ChatID, nil); err != nil {
+			log.WithError(err).Error("failed to send a message")
+		}
+	} else if strings.HasPrefix(update.Message.Text, "/shutdown") {
+		resp, err := grequests.Post("http://localhost:50731/api/device/shutdown", &grequests.RequestOptions{
+			JSON: map[string]interface{}{"ID": *bot.User.ID, "IMEI": bot.DeviceIMEI},
+		})
+		if err != nil || resp.StatusCode != 200 {
+			log.WithError(err).Error("failed to send a request")
+			if _, err := bot.SendMessage("Something went wrong. Try again later", bot.ChatID, nil); err != nil {
+				log.WithError(err).Error("failed to send a message")
+			}
+			return bot.HandleLoggedIn
+		}
+
+		defer resp.Close()
+
+		if _, err := bot.SendMessage("Your device now is shutted down!", bot.ChatID, nil); err != nil {
+			log.WithError(err).Error("failed to send a message")
+		}
 	}
 
 	return bot.HandleLoggedIn
